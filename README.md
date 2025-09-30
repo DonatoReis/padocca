@@ -26,7 +26,7 @@ PADOCCA é uma framework de segurança ofensiva de última geração que combina
 ## 📦 Instalação Rápida
 
 ```bash
-git clone https://github.com/seu-usuario/padocca.git
+git clone https://github.com/DonatoReis/padocca.git
 cd padocca
 ./install.sh
 ```
