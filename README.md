@@ -48,6 +48,10 @@ cd padocca
 ./padocca.sh --scan example.com --stealth --full
 ```
 
+> ⚠️ **Permissões**: execute o Padocca com seu usuário normal. Usar `sudo` faz com que os relatórios sejam criados como `root`, quebrando execuções futuras. Quando for obrigatório rodar como root, os artefatos serão gerados em `/var/tmp/padocca`.
+
+Use `--silent` para reduzir a verbosidade caso deseje apenas o resumo final.
+
 ## 🛠️ Módulos Disponíveis
 
 ### Core (Básicos)
@@ -195,6 +199,10 @@ Padocca/
 ├── core-rust/         # Core em Rust (25%)
 └── docs/              # Documentação
 ```
+
+## 📄 Relatórios
+
+Cada execução gera um diretório em `results/scan_<alvo>_<timestamp>/` contendo os artefatos individuais (`subdomains.json`, `wayback_urls.json`, `ports.json`, etc.) e um resumo consolidado em `report.json` com estatísticas, caminhos úteis e metadados do scan.
 
 ## 🔒 Segurança
 

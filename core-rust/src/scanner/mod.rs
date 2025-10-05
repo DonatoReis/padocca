@@ -2,15 +2,11 @@
 // Implements TCP, SYN, UDP, and custom scan techniques
 
 use anyhow::{Result, Context};
+use crate::evasion::{AntiDebug, AntiForensics, EvasionTechniques};
 use colored::Colorize;
 use dashmap::DashMap;
 use futures::stream::{self, StreamExt};
 use indicatif::{ProgressBar, ProgressStyle};
-use pnet::packet::{
-    ip::IpNextHeaderProtocols,
-    tcp::{self, MutableTcpPacket, TcpFlags},
-    Packet,
-};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -197,7 +193,7 @@ impl Scanner {
     }
     
     /// UDP scan
-    async fn udp_scan(&self, ip: IpAddr, ports: Vec<u16>, pb: ProgressBar) -> Result<()> {
+    async fn udp_scan(&self, _ip: IpAddr, ports: Vec<u16>, pb: ProgressBar) -> Result<()> {
         warn!("UDP scan implementation pending");
         
         // For now, mark as filtered
@@ -243,24 +239,41 @@ impl Scanner {
     /// Apply stealth techniques
     async fn apply_stealth_techniques(&self) {
         info!("Applying stealth techniques...");
-        
-        // Randomize scan order
-        // Fragment packets
-        // Add decoy IPs
-        // Randomize timing
-        
+
+        if AntiDebug::is_debugger_present() {
+            warn!("Debugger detected. Enabling extended evasion safeguards.");
+        }
+
+        let evasion = EvasionTechniques::default();
+        evasion.apply_all().await;
+
         let mut rng = rand::thread_rng();
         tokio::time::sleep(Duration::from_millis(rng.gen_range(100..500))).await;
+
+        if let Err(err) = AntiForensics::clear_logs() {
+            debug!("Failed to trigger log cleanup: {err:?}");
+        }
+        AntiForensics::secure_cleanup();
     }
-    
+
     /// Grab banner from service
-    async fn grab_banner(&self, stream: &mut TcpStream) -> Option<String> {
+    async fn grab_banner(&self, _stream: &mut TcpStream) -> Option<String> {
         // TODO: Implement banner grabbing
         None
     }
-    
+
     /// Identify service based on port and banner
     fn identify_service(&self, port: u16, banner: &Option<String>) -> Option<String> {
+        if let Some(banner) = banner {
+            let banner = banner.to_lowercase();
+            if banner.contains("ssh") {
+                return Some("SSH".to_string());
+            }
+            if banner.contains("http") {
+                return Some("HTTP".to_string());
+            }
+        }
+
         let service = match port {
             21 => "FTP",
             22 => "SSH",

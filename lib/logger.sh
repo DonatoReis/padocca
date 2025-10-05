@@ -14,7 +14,7 @@ LOG_LEVEL_CRITICAL=4
 CURRENT_LOG_LEVEL=${LOG_LEVEL_INFO}
 
 # Log file settings
-LOG_DIR="./logs"
+LOG_DIR="${PADOCCA_LOG_DIR:-${PADOCCA_ROOT:-$(pwd)}/logs}"
 LOG_FILE=""
 MAX_LOG_SIZE=10485760  # 10MB
 MAX_LOG_FILES=5
@@ -31,12 +31,16 @@ LOG_NC='\033[0m'                # No Color
 init_logger() {
     local scan_name=$1
     local timestamp=$(date '+%Y%m%d_%H%M%S')
+    local safe_name=$(echo "$scan_name" | tr ':/' '__' | tr -c '[:alnum:]_.-' '_' )
+    [[ -z "$safe_name" ]] && safe_name="scan"
     
+    LOG_DIR="${PADOCCA_LOG_DIR:-${PADOCCA_ROOT:-$(pwd)}/logs}"
+
     # Create log directory if it doesn't exist
     mkdir -p "$LOG_DIR"
     
     # Set log file name
-    LOG_FILE="$LOG_DIR/${scan_name}_${timestamp}.log"
+    LOG_FILE="$LOG_DIR/${safe_name}_${timestamp}.log"
     
     # Write log header
     echo "=====================================" >> "$LOG_FILE"

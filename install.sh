@@ -41,6 +41,41 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Prompt helpers ------------------------------------------------------------
+prompt_yes_no() {
+    local prompt="$1"
+    local default="${2:-n}"
+    local answer
+
+    if [ -t 0 ]; then
+        read -p "$prompt" -n 1 -r
+        echo
+        answer="${REPLY:-$default}"
+    else
+        answer="$default"
+        echo "${prompt}${default}"
+    fi
+
+    [[ "$answer" =~ ^[Yy]$ ]]
+}
+
+prompt_select() {
+    local prompt="$1"
+    local default="${2:-1}"
+    local choice
+
+    if [ -t 0 ]; then
+        read -p "$prompt" -n 1 -r
+        echo
+        choice="${REPLY:-$default}"
+    else
+        choice="$default"
+        echo "${prompt}${default}"
+    fi
+
+    echo "$choice"
+}
+
 # Install Go
 install_go() {
     echo -e "${YELLOW}[*] Installing Go...${NC}"
@@ -181,8 +216,12 @@ build_padocca() {
     # Build Go tools
     echo -e "${CYAN}[*] Building Go tools...${NC}"
     cd tools-go
-    
-    for tool in bruteforce crawler dirfuzz dnsenum proxychain; do
+
+    go mod tidy >/dev/null 2>&1 || echo -e "${YELLOW}  Warning: go mod tidy encountered issues${NC}"
+
+    local go_tools=(bruteforce crawler dirfuzz dnsenum proxychain emailsec pipeline subdiscovery wayback xss_sqli_scanner)
+
+    for tool in "${go_tools[@]}"; do
         echo -e "  Building $tool..."
         go build -o ../bin/$tool ./cmd/$tool/ 2>/dev/null || {
             echo -e "${YELLOW}  Warning: Failed to build $tool${NC}"
@@ -227,28 +266,37 @@ add_to_path() {
     SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
     PADOCCA_PATH="export PATH=\$PATH:$SCRIPT_DIR/bin"
     PADOCCA_ALIAS="alias padocca='$SCRIPT_DIR/padocca.sh'"
-    
-    # Opção 1: Link simbólico (preferível)
+
+    local method="$1"
+
     echo -e "${CYAN}[?] Escolha o método de instalação:${NC}"
     echo "  1) Link simbólico em /usr/local/bin (requer sudo)"
     echo "  2) Alias no shell (não requer sudo)"
-    read -p "Escolha [1-2]: " -n 1 -r
-    echo
-    
-    if [[ $REPLY == "1" ]]; then
-        # Criar link simbólico
-        echo -e "${YELLOW}[*] Criando link simbólico...${NC}"
-        if sudo ln -sf "$SCRIPT_DIR/padocca.sh" /usr/local/bin/padocca; then
-            echo -e "${GREEN}[✓] Link simbólico criado em /usr/local/bin/padocca${NC}"
+
+    if [[ -z "$method" ]]; then
+        method=$(prompt_select "Escolha [1-2]: " "1")
+    fi
+
+    if [[ "$method" == "1" ]]; then
+        echo -e "${YELLOW}[*] Instalando wrapper em /usr/local/bin...${NC}"
+        local wrapper_path="/usr/local/bin/padocca"
+        if sudo tee "$wrapper_path" >/dev/null <<EOF
+#!/bin/sh
+cd "$SCRIPT_DIR" || exit 1
+exec "$SCRIPT_DIR/padocca.sh" "\$@"
+EOF
+        then
+            sudo chmod +x "$wrapper_path"
+            echo -e "${GREEN}[✓] Wrapper criado em /usr/local/bin/padocca${NC}"
             echo -e "${GREEN}    Você pode usar 'padocca' de qualquer lugar!${NC}"
         else
             echo -e "${RED}[!] Falha ao criar link simbólico${NC}"
             echo -e "${YELLOW}    Configurando alias como fallback...${NC}"
-            REPLY="2"
+            method="2"
         fi
     fi
-    
-    if [[ $REPLY == "2" ]] || [[ $REPLY != "1" && $REPLY != "2" ]]; then
+
+    if [[ "$method" == "2" ]]; then
         # Adicionar alias ao shell
         echo -e "${YELLOW}[*] Adicionando alias ao shell...${NC}"
         
@@ -318,7 +366,9 @@ verify_installation() {
     ERRORS=0
     
     # Check binaries
-    for binary in bruteforce crawler dirfuzz dnsenum proxychain padocca-core; do
+    local required_bins=(bruteforce crawler dirfuzz dnsenum proxychain emailsec pipeline subdiscovery techfinger wayback xss_sqli_scanner padocca-core)
+
+    for binary in "${required_bins[@]}"; do
         if [[ -f "bin/$binary" ]]; then
             echo -e "${GREEN}  ✓ $binary${NC}"
         else
@@ -372,16 +422,16 @@ main() {
     build_padocca
     
     # Optional features
-    read -p "Add Padocca to PATH? (y/n) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        add_to_path
+    if prompt_yes_no "Add Padocca to PATH? (y/n) " "y"; then
+        local install_method=""
+        if [ ! -t 0 ]; then
+            install_method="1"
+        fi
+        add_to_path "$install_method"
     fi
     
     if [[ "$OS" == "linux" ]]; then
-        read -p "Create desktop launcher? (y/n) " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
+        if prompt_yes_no "Create desktop launcher? (y/n) " "n"; then
             create_launcher
         fi
     fi

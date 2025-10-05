@@ -38,3 +38,5 @@ require (
 	golang.org/x/term v0.25.0 // indirect
 	golang.org/x/tools v0.22.0 // indirect
 )
+
+// ensure module aware of xss_sqli_scanner

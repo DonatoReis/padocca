@@ -84,13 +84,31 @@ impl EvasionTechniques {
     /// Apply all evasion techniques
     pub async fn apply_all(&self) {
         info!("Applying comprehensive evasion techniques");
-        
+
         // Random initial delay
         self.random_delay().await;
-        
+
+        debug!(
+            "Using fragment size {} with {} user-agents",
+            self.fragment_size,
+            self.user_agents.len()
+        );
+
         // Generate decoys
         let decoys = self.generate_decoys();
         debug!("Generated {} decoy IPs", decoys.len());
+
+        // Demonstrate packet fragmentation and shuffle logic for visibility
+        let fragments = self.fragment_packet(b"padocca");
+        debug!("Fragmented probe into {} chunks", fragments.len());
+
+        let shuffled = self.shuffle_targets(decoys.clone());
+        if let Some(example_ip) = shuffled.first() {
+            debug!("First shuffled decoy IP: {}", example_ip);
+        }
+
+        let ua = self.random_user_agent();
+        debug!("Selected stealth user-agent: {}", ua);
     }
 }
 

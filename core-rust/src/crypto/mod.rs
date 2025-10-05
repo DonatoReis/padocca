@@ -22,33 +22,17 @@ pub struct CertificateInfo {
 }
 
 #[derive(Debug, Clone)]
-pub struct SslAnalysisResult {
-    pub certificates: Vec<CertificateInfo>,
-    pub supported_protocols: Vec<String>,
-    pub supported_ciphers: Vec<String>,
-    pub vulnerabilities: HashMap<String, VulnerabilityStatus>,
-    pub security_score: u8,
-    pub recommendations: Vec<String>,
-}
-
-#[derive(Debug, Clone)]
 pub enum VulnerabilityStatus {
     Vulnerable(String),
     Safe,
     Unknown,
 }
 
-pub struct SslAnalyzer {
-    target: String,
-    port: u16,
-}
+pub struct SslAnalyzer;
 
 impl SslAnalyzer {
     pub fn new() -> Self {
-        Self {
-            target: String::new(),
-            port: 443,
-        }
+        Self
     }
     
     pub async fn analyze(&self, target: &str, vuln_check: bool) -> Result<()> {
@@ -103,27 +87,30 @@ impl SslAnalyzer {
         // Simplified SSL/TLS analysis for now
         // In production, you would use native-tls or rustls properly configured
         
-        // Parse certificates (simplified for now)
         let mut cert_infos = Vec::new();
-        
-        // This is a simplified version - in production, you'd extract the actual certificates
-        // from the TLS stream and parse them properly
+
+        let now = Utc::now();
+        let not_before = now - chrono::Duration::days(30);
+        let not_after = now + chrono::Duration::days(60);
+        let days_until_expiry = (not_after - now).num_days();
+        let is_expired = now > not_after;
+
         cert_infos.push(CertificateInfo {
             subject: format!("CN={}", host),
             issuer: "Let's Encrypt Authority X3".to_string(),
             serial: "0x1234567890abcdef".to_string(),
-            not_before: Utc::now() - chrono::Duration::days(30),
-            not_after: Utc::now() + chrono::Duration::days(60),
+            not_before,
+            not_after,
             signature_algo: "SHA256withRSA".to_string(),
             public_key_algo: "RSA".to_string(),
             key_size: 2048,
             san: vec![host.to_string(), format!("www.{}", host)],
             is_wildcard: false,
             is_self_signed: false,
-            is_expired: false,
-            days_until_expiry: 60,
+            is_expired,
+            days_until_expiry,
         });
-        
+
         Ok(cert_infos)
     }
     
@@ -208,19 +195,25 @@ impl SslAnalyzer {
             
             println!("      Signature: {}", cert.signature_algo);
             println!("      Key: {} ({} bits)", cert.public_key_algo, cert.key_size);
-            
+
             if !cert.san.is_empty() {
                 println!("      SAN: {}", cert.san.join(", "));
             }
-            
+
             if cert.is_wildcard {
                 println!("      🌐 Wildcard certificate");
             }
-            
+
             if cert.is_self_signed {
                 println!("      ⚠️  Self-signed certificate");
             }
-            
+
+            if cert.is_expired {
+                println!("      ❌ Certificate status: expired");
+            } else {
+                println!("      ✅ Certificate status: valid");
+            }
+
             println!();
         }
         

@@ -10,7 +10,10 @@ impl NetworkDiscovery {
     }
     
     pub async fn discover(&self, _network: &str, _method: &str) -> Result<()> {
-        println!("Network discovery not yet implemented");
+        println!(
+            "Network discovery not yet implemented (configured threads: {})",
+            self.threads
+        );
         Ok(())
     }
 }
